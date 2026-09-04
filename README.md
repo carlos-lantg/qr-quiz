@@ -121,7 +121,13 @@ Probado con 40 respuestas simultáneas (0.13 s, sin locks) y 60 pollings a la ve
 En el proyector cada pregunta se recorta a 2 líneas (el texto completo está en
 los teléfonos), así una pregunta larga no empuja el marcador fuera de pantalla.
 
-El móvil muestra todas las preguntas en una sola página; cada una se responde
+En el móvil las preguntas van **una por pantalla, tipo slide**: al responder
+pasa sola a la siguiente, con un indicador "Pregunta 2 de 5" y una barra de
+avance. Si recarga a media ronda, el servidor le dice cuáles ya respondió y
+continúa donde iba. Al terminar las suyas ve "¡Listo!" mientras espera a los
+demás.
+
+Cada pregunta se responde cada una se responde
 una sola vez por navegador (UUID en `localStorage` + `UNIQUE (question,
 participant_uuid)` en SQLite).
 

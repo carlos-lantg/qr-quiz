@@ -11,11 +11,12 @@
          white-space:normal; overflow-wrap:anywhere; }
   .opt:hover, .opt:focus { background:#EFF6F5; border-color:var(--teal); color:var(--text); }
   .opt .letter { font-weight:800; margin-right:.75rem; color:var(--teal-dark); }
-  .q-card { border-top:1px solid var(--border); padding-top:1.5rem; margin-top:1.5rem; }
+  .opt.elegida, .opt.elegida:hover { background:var(--teal-dark); border-color:var(--teal-dark); color:#fff; }
+  .opt.elegida .letter { color:#fff; }
   .q-card h2 { overflow-wrap:anywhere; }
-  .q-card:first-child { border-top:0; margin-top:0; padding-top:0; }
-  .registrada { background:#E7F2F1; border:1px solid var(--teal); color:var(--teal-dark);
-                border-radius:.5rem; padding:.6rem .9rem; }
+  .q-card.anim { animation:entra .25s ease-out; }
+  @keyframes entra { from { opacity:0; transform:translateX(18px); } to { opacity:1; transform:none; } }
+  .barra { height:.35rem; }
 </style>
 </head>
 <body class="py-4">
@@ -36,11 +37,18 @@
     <p class="text-muted-brand fs-5">Ya no se admiten más participantes.</p>
   </div>
 
-  <!-- Las preguntas -->
+  <!-- Una pregunta a la vez -->
   <div id="quiz" hidden>
+    <div class="d-flex justify-content-between align-items-baseline mb-1">
+      <span class="small text-muted-brand" id="progreso"></span>
+    </div>
+    <div class="progress barra mb-4">
+      <div class="progress-bar" id="barra-progreso" style="width:0%"></div>
+    </div>
+
     {% for q in questions %}
-    <div class="q-card" data-q="{{ q.id }}">
-      <h2 class="h5 mb-3">{{ forloop.counter }}. {{ q.text }}</h2>
+    <div class="q-card" data-q="{{ q.id }}" hidden>
+      <h2 class="h5 mb-3">{{ q.text }}</h2>
       <div class="options d-grid gap-2">
         {% for value, letter, text in q.options %}
         <button class="btn opt" data-option="{{ value }}">
@@ -48,12 +56,16 @@
         </button>
         {% endfor %}
       </div>
-      <div class="done d-none registrada">Respuesta registrada ✓</div>
     </div>
     {% endfor %}
-    <p class="small text-center mt-5 text-muted-brand">
-      Los resultados se muestran en la pantalla principal.
-    </p>
+  </div>
+
+  <!-- Ya respondio todas, faltan los demas -->
+  <div id="mine-done" hidden class="text-center py-5">
+    <div class="display-6 fw-bold mb-3" style="color:var(--teal-dark)">¡Listo! ✓</div>
+    <p class="text-muted-brand fs-5">Respondiste todas las preguntas.</p>
+    <p class="text-muted-brand">Espera a que terminen los demás; los resultados están en la pantalla.</p>
+    <div class="spinner-border mt-2" style="color:var(--teal)"></div>
   </div>
 
   <!-- Termino el quiz -->
@@ -79,12 +91,36 @@ if (!uuid) {
   localStorage.setItem('participant_uuid', uuid);
 }
 
-const pantallas = ['waiting', 'closed', 'quiz', 'ended'];
+const pantallas = ['waiting', 'closed', 'quiz', 'mine-done', 'ended'];
 function mostrar(id) {
   pantallas.forEach(p => document.getElementById(p).hidden = (p !== id));
 }
 
-let dentro = false, celebrado = false;
+const tarjetas = Array.from(document.querySelectorAll('.q-card'));
+const respondidas = new Set();
+let dentro = false, celebrado = false, actual = -1;
+
+// Muestra la primera pregunta sin responder; si no queda ninguna, la pantalla
+// de espera. Asi el movil avanza como slides.
+function mostrarSiguiente() {
+  const i = tarjetas.findIndex(c => !respondidas.has(c.dataset.q));
+  tarjetas.forEach(c => c.hidden = true);
+
+  if (i === -1) { actual = tarjetas.length; mostrar('mine-done'); return; }
+
+  actual = i;
+  const card = tarjetas[i];
+  card.hidden = false;
+  card.classList.remove('anim');
+  void card.offsetWidth;              // reinicia la animacion
+  card.classList.add('anim');
+
+  document.getElementById('progreso').textContent =
+    'Pregunta ' + (i + 1) + ' de ' + tarjetas.length;
+  document.getElementById('barra-progreso').style.width =
+    (respondidas.size / tarjetas.length * 100) + '%';
+  mostrar('quiz');
+}
 
 async function unirse() {
   const r = await fetch('/api/join/', {
@@ -97,24 +133,17 @@ async function unirse() {
   // El servidor dice que preguntas ya respondi: si el evento se reinicia,
   // el telefono se desbloquea solo sin tener que borrar datos del navegador.
   const data = await r.json();
-  (data.answered || []).forEach(qid => {
-    const card = document.querySelector('.q-card[data-q="' + qid + '"]');
-    if (card) markDone(card);
-  });
+  respondidas.clear();
+  (data.answered || []).forEach(qid => respondidas.add(String(qid)));
   return true;
 }
 
-function markDone(card) {
-  card.querySelector('.options').classList.add('d-none');
-  card.querySelector('.done').classList.remove('d-none');
-}
-
-document.querySelectorAll('.q-card').forEach(card => {
+tarjetas.forEach(card => {
   const qid = card.dataset.q;
-
   card.querySelectorAll('.opt').forEach(btn => {
     btn.addEventListener('click', async () => {
       card.querySelectorAll('.opt').forEach(b => b.disabled = true);
+      btn.classList.add('elegida');
       try {
         const r = await fetch('/api/answer/', {
           method: 'POST',
@@ -124,8 +153,10 @@ document.querySelectorAll('.q-card').forEach(card => {
           })
         });
         if (!r.ok && r.status !== 409) throw new Error();
-        markDone(card);
+        respondidas.add(qid);
+        setTimeout(mostrarSiguiente, 500);   // pasa a la siguiente
       } catch (e) {
+        btn.classList.remove('elegida');
         card.querySelectorAll('.opt').forEach(b => b.disabled = false);
         alert('No se pudo registrar, intenta de nuevo.');
       }
@@ -133,9 +164,17 @@ document.querySelectorAll('.q-card').forEach(card => {
   });
 });
 
+document.getElementById('reiniciar').addEventListener('click', e => {
+  e.preventDefault();
+  if (!confirm('¿Borrar los datos de este teléfono y empezar de nuevo?')) return;
+  localStorage.clear();
+  location.reload();
+});
+
 async function tick() {
   try {
     const s = await (await fetch('/api/stats/', {cache:'no-store'})).json();
+
     if (s.done) {
       mostrar('ended');
       if (!celebrado) {
@@ -146,26 +185,26 @@ async function tick() {
       }
       return;
     }
+
     if (!dentro) return;              // llego tarde: se queda en "closed"
-    mostrar(s.started ? 'quiz' : 'waiting');
+
+    if (!s.started) {                 // aun no empieza (o reiniciaron el evento)
+      mostrar('waiting');
+      actual = -1;
+      return;
+    }
+
+    if (actual < 0) mostrarSiguiente();
   } catch (e) {}
 }
 
-document.getElementById('reiniciar').addEventListener('click', e => {
-  e.preventDefault();
-  if (!confirm('¿Borrar los datos de este teléfono y empezar de nuevo?')) return;
-  localStorage.clear();
-  location.reload();
-});
-
 // Safari restaura la pagina desde bfcache al volver atras: refrescar al mostrar.
 window.addEventListener('pageshow', e => {
-  if (e.persisted) unirse().catch(() => {}).then(tick);
+  if (e.persisted) { actual = -1; unirse().catch(() => {}).then(tick); }
 });
 
 unirse().catch(() => {}).then(tick);
 setInterval(tick, 2000);
 </script>
-
 </body>
 </html>
