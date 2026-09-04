@@ -69,6 +69,8 @@
 
 </div>
 
+{% include "_confetti.html" %}
+
 <script>
 let uuid = localStorage.getItem('participant_uuid');
 if (!uuid) {
@@ -136,7 +138,12 @@ async function tick() {
     const s = await (await fetch('/api/stats/', {cache:'no-store'})).json();
     if (s.done) {
       mostrar('ended');
-      if (!celebrado) { celebrado = true; lanzarConfeti(12000); }
+      if (!celebrado) {
+        celebrado = true;
+        // Se acabo: el telefono queda limpio para la proxima.
+        try { localStorage.clear(); } catch (e) {}
+        lanzarConfeti(4000);
+      }
       return;
     }
     if (!dentro) return;              // llego tarde: se queda en "closed"
@@ -160,6 +167,5 @@ unirse().catch(() => {}).then(tick);
 setInterval(tick, 2000);
 </script>
 
-{% include "_confetti.html" %}
 </body>
 </html>

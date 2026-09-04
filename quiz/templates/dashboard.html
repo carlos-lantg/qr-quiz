@@ -113,6 +113,8 @@
   </div>
 </div>
 
+{% include "_confetti.html" %}
+
 <script>
 let celebrado = {% if stats.done %}true{% else %}false{% endif %};
 
@@ -149,7 +151,7 @@ async function tick() {
     document.getElementById('b-correct').textContent = s.correct;
     document.getElementById('b-incorrect').textContent = s.incorrect;
 
-    if (s.done && !celebrado) { celebrado = true; lanzarConfeti(12000); }
+    if (s.done && !celebrado) { celebrado = true; lanzarConfeti(4000); }
 
     const rows = document.querySelectorAll('.q-row');
     // Si agregaron o borraron preguntas en /admin/, recargar para redibujar.
@@ -169,6 +171,5 @@ setInterval(tick, 2000);
 tick();
 </script>
 
-{% include "_confetti.html" %}
 </body>
 </html>

@@ -15,7 +15,7 @@ function lanzarConfeti(ms) {
     rot: Math.random() * 6.28, vr: -0.2 + Math.random() * 0.4,
     c: colores[Math.floor(Math.random() * colores.length)]
   }));
-  const fin = Date.now() + (ms || 8000);
+  const fin = Date.now() + (ms || 4000);
   (function frame() {
     ctx.clearRect(0, 0, cv.width, cv.height);
     for (const p of piezas) {

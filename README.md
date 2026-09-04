@@ -140,6 +140,9 @@ de **Reiniciar evento** todos los móviles se desbloquean solos: no hay que
 pedirle a nadie que borre datos del navegador. Por si acaso, `/answer/` tiene
 abajo un enlace **Reiniciar este teléfono** que limpia el `localStorage`.
 
+Al terminar el quiz, cada teléfono borra su `localStorage` solo, así queda
+limpio para la próxima vez.
+
 El participante **no** ve si acertó: solo "respuesta registrada". Los aciertos
 se ven únicamente en el dashboard del proyector: marcador global grande arriba
 y, debajo, una barra pequeña por pregunta. Si agregas o borras preguntas en
