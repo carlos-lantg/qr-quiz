@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Responder</title>
+{% include "_theme.html" %}
+<style>
+  .opt { text-align:left; padding:1rem 1.15rem; font-size:1.1rem;
+         background:var(--surface); border:1px solid var(--border); color:var(--text); }
+  .opt:hover, .opt:focus { background:#EFF6F5; border-color:var(--teal); color:var(--text); }
+  .opt .letter { font-weight:800; margin-right:.75rem; color:var(--teal-dark); }
+  .q-card { border-top:1px solid var(--border); padding-top:1.5rem; margin-top:1.5rem; }
+  .q-card:first-child { border-top:0; margin-top:0; padding-top:0; }
+  .registrada { background:#E7F2F1; border:1px solid var(--teal); color:var(--teal-dark);
+                border-radius:.5rem; padding:.6rem .9rem; }
+</style>
+</head>
+<body class="py-4">
+<div class="container" style="max-width:520px;">
+
+  <img class="logo mb-4" src="/logo.jpg" alt="Clínica del Dolor">
+
+  <!-- Registrado, esperando que el presentador de Comenzar -->
+  <div id="waiting" class="text-center py-5">
+    <div class="display-6 fw-bold mb-3" style="color:var(--teal-dark)">Estás dentro ✓</div>
+    <p class="text-muted-brand fs-5">Espera a que comience el quiz.</p>
+    <div class="spinner-border mt-3" style="color:var(--teal)"></div>
+  </div>
+
+  <!-- Llego tarde: el QR ya se cerro -->
+  <div id="closed" hidden class="text-center py-5">
+    <div class="display-6 fw-bold mb-3" style="color:var(--gold)">El quiz ya comenzó</div>
+    <p class="text-muted-brand fs-5">Ya no se admiten más participantes.</p>
+  </div>
+
+  <!-- Las preguntas -->
+  <div id="quiz" hidden>
+    {% for q in questions %}
+    <div class="q-card" data-q="{{ q.id }}">
+      <h2 class="h5 mb-3">{{ forloop.counter }}. {{ q.text }}</h2>
+      <div class="options d-grid gap-2">
+        {% for value, letter, text in q.options %}
+        <button class="btn opt" data-option="{{ value }}">
+          <span class="letter">{{ letter }}</span>{{ text }}
+        </button>
+        {% endfor %}
+      </div>
+      <div class="done d-none registrada">Respuesta registrada ✓</div>
+    </div>
+    {% endfor %}
+    <p class="small text-center mt-5 text-muted-brand">
+      Los resultados se muestran en la pantalla principal.
+    </p>
+  </div>
+
+  <!-- Termino el quiz -->
+  <div id="ended" hidden class="text-center py-5">
+    <div class="display-1 mb-3">🎉</div>
+    <div class="display-6 fw-bold mb-3" style="color:var(--teal-dark)">¡Terminó!</div>
+    <p class="text-muted-brand fs-5">Gracias por participar. Mira los resultados en pantalla.</p>
+  </div>
+
+</div>
+
+<script>
+let uuid = localStorage.getItem('participant_uuid');
+if (!uuid) {
+  uuid = (crypto.randomUUID ? crypto.randomUUID()
+        : Date.now() + '-' + Math.random().toString(16).slice(2));
+  localStorage.setItem('participant_uuid', uuid);
+}
+
+const pantallas = ['waiting', 'closed', 'quiz', 'ended'];
+function mostrar(id) {
+  pantallas.forEach(p => document.getElementById(p).hidden = (p !== id));
+}
+
+let dentro = false, celebrado = false;
+
+async function unirse() {
+  const r = await fetch('/api/join/', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({uuid: uuid})
+  });
+  dentro = r.ok;
+  if (!dentro) mostrar('closed');
+  return dentro;
+}
+
+function markDone(card) {
+  card.querySelector('.options').classList.add('d-none');
+  card.querySelector('.done').classList.remove('d-none');
+}
+
+document.querySelectorAll('.q-card').forEach(card => {
+  const qid = card.dataset.q;
+  if (localStorage.getItem('answered_' + qid)) markDone(card);
+
+  card.querySelectorAll('.opt').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      card.querySelectorAll('.opt').forEach(b => b.disabled = true);
+      try {
+        const r = await fetch('/api/answer/', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            uuid: uuid, question: Number(qid), option: Number(btn.dataset.option)
+          })
+        });
+        if (!r.ok && r.status !== 409) throw new Error();
+        localStorage.setItem('answered_' + qid, '1');
+        markDone(card);
+      } catch (e) {
+        card.querySelectorAll('.opt').forEach(b => b.disabled = false);
+        alert('No se pudo registrar, intenta de nuevo.');
+      }
+    });
+  });
+});
+
+async function tick() {
+  try {
+    const s = await (await fetch('/api/stats/', {cache:'no-store'})).json();
+    if (s.done) {
+      mostrar('ended');
+      if (!celebrado) { celebrado = true; lanzarConfeti(12000); }
+      return;
+    }
+    if (!dentro) return;              // llego tarde: se queda en "closed"
+    mostrar(s.started ? 'quiz' : 'waiting');
+  } catch (e) {}
+}
+
+unirse().catch(() => {}).then(tick);
+setInterval(tick, 2000);
+</script>
+
+{% include "_confetti.html" %}
+</body>
+</html>

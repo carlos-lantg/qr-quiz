@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resultados en vivo</title>
+{% include "_theme.html" %}
+<style>
+  .logo-big { height:min(44vh,400px); }
+  .logo-side { height:min(16vh,130px); }
+  .score { font-size:clamp(2.6rem,9vw,7.5rem); font-weight:800; line-height:1;
+           letter-spacing:-.03em; color:var(--teal-dark); }
+  .score .total { color:#B9B0A2; }
+  .label { font-size:clamp(.9rem,1.9vw,1.5rem); font-weight:700; letter-spacing:.25em; color:var(--gold); }
+  .pct { font-size:clamp(1.4rem,3.6vw,2.8rem); font-weight:700; color:var(--gold); }
+  .progress-main { height:1.5rem; }
+  .breakdown { font-size:clamp(.9rem,1.5vw,1.3rem); color:var(--muted); }
+  .qr-card { background:#fff; border:1px solid var(--border); border-radius:1rem; padding:1rem; }
+  .qr-card svg { display:block; width:100%; height:auto; }
+  .qr-wrap { width:min(42vh,380px); }
+  .q-row { border-top:1px solid var(--border); padding:.8rem 0; }
+  .q-text { font-size:clamp(.95rem,1.5vw,1.3rem); }
+  .q-num { font-size:clamp(.95rem,1.5vw,1.3rem); color:var(--muted); white-space:nowrap; }
+  .q-num b { color:var(--teal-dark); }
+  .q-progress { height:.7rem; margin-top:.45rem; }
+  .counter { font-size:clamp(2.5rem,7vw,5rem); font-weight:800; line-height:1; color:var(--teal-dark); }
+</style>
+</head>
+<body>
+
+<!-- =============== ANTES DE COMENZAR: logo | QR =============== -->
+<div id="stage-pre" class="container-fluid vh-100 d-flex align-items-center"
+     {% if stats.started %}hidden{% endif %}>
+  <div class="row w-100 align-items-center g-5">
+    <div class="col-lg-6 text-center">
+      <img class="logo logo-big" src="/logo.jpg" alt="Clínica del Dolor y Cuidados Paliativos del Cibao">
+    </div>
+    <div class="col-lg-6 text-center">
+      <div class="qr-wrap mx-auto">
+        <div class="qr-card">{{ qr_svg|safe }}</div>
+      </div>
+      <div class="mt-3 fs-3 fw-semibold">Escanea para responder</div>
+      <div class="small text-muted-brand">{{ answer_url }}</div>
+      <div class="mt-4 fs-2"><span id="joined">{{ stats.participants }}</span> conectados</div>
+      <button id="btn-start" class="btn btn-brand btn-lg mt-3 px-5 fs-4">Comenzar</button>
+    </div>
+  </div>
+</div>
+
+<!-- =============== YA COMENZADO: preguntas | logo =============== -->
+<div id="stage-live" class="container-fluid py-3"
+     {% if not stats.started %}hidden{% endif %}>
+  <div class="row g-4">
+
+    <div class="col-lg-8">
+      <div class="text-center">
+        <div class="score">
+          <span id="correct">{{ stats.correct }}</span><span class="total"> / <span id="total">{{ stats.total }}</span></span>
+        </div>
+        <div class="label mt-2">CORRECTAS</div>
+        <div class="pct mt-2"><span id="pct">{{ stats.percentage }}</span>%</div>
+        <div class="progress progress-main my-3 mx-auto" style="max-width:760px;">
+          <div id="bar" class="progress-bar" style="width:{{ stats.percentage }}%"></div>
+        </div>
+        <div class="breakdown">
+          <span id="b-correct">{{ stats.correct }}</span> correctas
+          &middot;
+          <span id="b-incorrect">{{ stats.incorrect }}</span> incorrectas
+        </div>
+      </div>
+
+      <div id="questions" class="mt-4">
+        {% for q in stats.questions %}
+        <div class="q-row" data-q="{{ q.id }}">
+          <div class="d-flex justify-content-between align-items-baseline gap-3">
+            <span class="q-text">{{ forloop.counter }}. {{ q.text }}</span>
+            <span class="q-num"><b class="j-correct">{{ q.correct }}</b> / <span class="j-total">{{ q.total }}</span>
+              &middot; <span class="j-pct">{{ q.percentage }}</span>%</span>
+          </div>
+          <div class="progress q-progress">
+            <div class="progress-bar j-bar" style="width:{{ q.percentage }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="col-lg-4 text-center">
+      <img class="logo logo-side mb-4" src="/logo.jpg" alt="Clínica del Dolor">
+
+      <div id="live-box" {% if stats.done %}hidden{% endif %}>
+        <div class="fs-5 text-muted-brand">Participantes</div>
+        <div class="counter" id="live-participants">{{ stats.participants }}</div>
+        <div class="fs-4 mt-3">
+          <span id="live-completed">{{ stats.completed }}</span> completaron
+        </div>
+        <div class="small text-muted-brand mt-2">QR cerrado, no entran más</div>
+        <button id="btn-finish" class="btn btn-outline-secondary mt-3">Terminar ahora</button>
+      </div>
+
+      <div id="done-box" {% if not stats.done %}hidden{% endif %}>
+        <div class="display-1 mb-2">🎉</div>
+        <div class="fs-1 fw-bold" style="color:var(--teal-dark)">¡COMPLETADO!</div>
+        <div class="fs-4 mt-2"><span id="done-participants">{{ stats.participants }}</span> participantes</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let celebrado = {% if stats.done %}true{% else %}false{% endif %};
+
+document.getElementById('btn-start').addEventListener('click', async () => {
+  await fetch('/api/start/', {method: 'POST'});
+  tick();
+});
+
+document.getElementById('btn-finish').addEventListener('click', async () => {
+  if (!confirm('¿Terminar el quiz ahora?')) return;
+  await fetch('/api/finish/', {method: 'POST'});
+  tick();
+});
+
+async function tick() {
+  try {
+    const s = await (await fetch('/api/stats/', {cache:'no-store'})).json();
+
+    // Escenario: antes de comenzar solo logo + QR; despues preguntas + logo.
+    document.getElementById('stage-pre').hidden = s.started;
+    document.getElementById('stage-live').hidden = !s.started;
+    document.getElementById('live-box').hidden = s.done;
+    document.getElementById('done-box').hidden = !s.done;
+
+    joined.textContent = s.participants;
+    document.getElementById('live-participants').textContent = s.participants;
+    document.getElementById('live-completed').textContent = s.completed;
+    document.getElementById('done-participants').textContent = s.participants;
+
+    correct.textContent = s.correct;
+    total.textContent = s.total;
+    pct.textContent = s.percentage;
+    bar.style.width = s.percentage + '%';
+    document.getElementById('b-correct').textContent = s.correct;
+    document.getElementById('b-incorrect').textContent = s.incorrect;
+
+    if (s.done && !celebrado) { celebrado = true; lanzarConfeti(12000); }
+
+    const rows = document.querySelectorAll('.q-row');
+    // Si agregaron o borraron preguntas en /admin/, recargar para redibujar.
+    if (rows.length !== s.questions.length) { location.reload(); return; }
+
+    s.questions.forEach(q => {
+      const row = document.querySelector('.q-row[data-q="' + q.id + '"]');
+      if (!row) { location.reload(); return; }
+      row.querySelector('.j-correct').textContent = q.correct;
+      row.querySelector('.j-total').textContent = q.total;
+      row.querySelector('.j-pct').textContent = q.percentage;
+      row.querySelector('.j-bar').style.width = q.percentage + '%';
+    });
+  } catch (e) {}
+}
+setInterval(tick, 2000);
+tick();
+</script>
+
+{% include "_confetti.html" %}
+</body>
+</html>

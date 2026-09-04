@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin</title>
+{% include "_theme.html" %}
+<style>
+  .card-box { background:var(--surface); border:1px solid var(--border);
+              border-radius:.75rem; padding:1.25rem; }
+</style>
+</head>
+<body class="py-5">
+<div class="container" style="max-width:660px;">
+
+  <img class="logo mb-4" src="/logo.jpg" alt="Clínica del Dolor">
+
+{% if login %}
+  <h1 class="h4 mb-4">Acceso admin</h1>
+  {% if error %}<div class="alert alert-danger py-2">Clave incorrecta.</div>{% endif %}
+  <form method="post" class="card-box d-grid gap-3">
+    <input type="password" name="password" class="form-control form-control-lg"
+           placeholder="Clave" autofocus>
+    <button class="btn btn-brand btn-lg">Entrar</button>
+  </form>
+
+{% else %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0">Preguntas</h1>
+    <a href="/admin/logout/" class="btn btn-sm btn-outline-secondary">Salir</a>
+  </div>
+
+  {% if saved %}<div class="alert alert-success py-2">Guardado.</div>{% endif %}
+
+  {% for q in questions %}
+  <form method="post" class="card-box d-grid gap-3 mb-3">
+    <input type="hidden" name="action" value="save">
+    <input type="hidden" name="qid" value="{{ q.id }}">
+
+    <div>
+      <label class="form-label text-muted-brand">Pregunta {{ forloop.counter }}</label>
+      <textarea name="text" rows="2" class="form-control">{{ q.text }}</textarea>
+    </div>
+
+    <div>
+      <label class="form-label text-muted-brand">Opciones — marca la correcta</label>
+      {% for value, letter, text in q.options %}
+      <div class="input-group mb-2">
+        <div class="input-group-text">
+          <input type="radio" name="correct_option" value="{{ value }}" class="form-check-input mt-0"
+                 {% if value == q.correct_option %}checked{% endif %}>
+        </div>
+        <span class="input-group-text">{{ letter }}</span>
+        <input type="text" name="option_{{ value }}" value="{{ text }}" class="form-control">
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="d-flex gap-2">
+      <button class="btn btn-brand">Guardar</button>
+      <button class="btn btn-outline-danger" name="action" value="delete"
+              formnovalidate
+              onclick="return confirm('¿Borrar esta pregunta y sus respuestas?');">Borrar</button>
+    </div>
+  </form>
+  {% endfor %}
+
+  <form method="post" class="mb-4">
+    <input type="hidden" name="action" value="add">
+    <button class="btn btn-brand">+ Agregar pregunta</button>
+  </form>
+
+  <div class="card-box">
+    <p class="mb-3">
+      Respuestas registradas: <strong>{{ stats.total }}</strong>
+      ({{ stats.correct }} correctas &middot; {{ stats.incorrect }} incorrectas)
+    </p>
+    <form method="post" onsubmit="return confirm('¿Reiniciar el evento? Se borran respuestas y participantes.');">
+      <input type="hidden" name="action" value="reset">
+      <button class="btn btn-outline-danger">Reiniciar evento</button>
+    </form>
+    <p class="small mt-3 mb-0 text-muted-brand">
+      Reiniciar borra respuestas y participantes, y vuelve a mostrar el QR con
+      el botón <em>Comenzar</em> en el dashboard. Hazlo también si cambias una
+      pregunta ya respondida.
+    </p>
+  </div>
+
+  <div class="mt-4"><a href="/" style="color:var(--teal-dark)">← Ver dashboard</a></div>
+{% endif %}
+
+</div>
+</body>
+</html>
