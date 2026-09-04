@@ -2,8 +2,17 @@
 
 ## Configurar la pregunta
 
-Entrar a `/admin/` con la clave **123456**: ahí se agregan, editan y borran
-preguntas (texto, 4 opciones y cuál es la correcta). Se guardan en la base.
+Entrar a `/admin/` con la clave **123456**. Todas las preguntas se editan en
+una sola pantalla y **un solo botón "Guardar todo"** aplica los cambios:
+
+- **+ Agregar pregunta** añade un bloque en blanco (sin recargar).
+- **Quitar** elimina el bloque; si esa pregunta ya tenía respuestas, avisa
+  cuántas se borrarán.
+- Dejar el texto de una pregunta vacío también la elimina.
+- Nada se guarda hasta que presionas **Guardar todo**.
+
+El texto de la pregunta y el de las opciones **no tienen límite de largo**
+(`TextField`), y los campos crecen solos mientras escribes.
 
 Los valores de `config/settings.py` (o las variables de entorno de abajo) solo
 son la **semilla**: crean la primera pregunta si la base está vacía.
@@ -107,7 +116,10 @@ Probado con 40 respuestas simultáneas (0.13 s, sin locks) y 60 pollings a la ve
 | `POST /api/join/` | `{"uuid": "..."}` → registra al participante; 403 si ya comenzó |
 | `POST /api/start/` | Botón Comenzar: cierra el QR y abre las preguntas |
 | `POST /api/finish/` | Botón Terminar ahora: fuerza el final |
-| `GET/POST /admin/` | Agregar/editar/borrar preguntas + reiniciar evento (`123456`) |
+| `GET/POST /admin/` | Alta/edición/baja de todas las preguntas en un submit + reiniciar evento (`123456`) |
+
+En el proyector cada pregunta se recorta a 2 líneas (el texto completo está en
+los teléfonos), así una pregunta larga no empuja el marcador fuera de pantalla.
 
 El móvil muestra todas las preguntas en una sola página; cada una se responde
 una sola vez por navegador (UUID en `localStorage` + `UNIQUE (question,

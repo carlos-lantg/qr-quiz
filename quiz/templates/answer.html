@@ -6,11 +6,13 @@
 <title>Responder</title>
 {% include "_theme.html" %}
 <style>
-  .opt { text-align:left; padding:1rem 1.15rem; font-size:1.1rem;
-         background:var(--surface); border:1px solid var(--border); color:var(--text); }
+  .opt { text-align:left; padding:1rem 1.15rem; font-size:1.1rem; line-height:1.4;
+         background:var(--surface); border:1px solid var(--border); color:var(--text);
+         white-space:normal; overflow-wrap:anywhere; }
   .opt:hover, .opt:focus { background:#EFF6F5; border-color:var(--teal); color:var(--text); }
   .opt .letter { font-weight:800; margin-right:.75rem; color:var(--teal-dark); }
   .q-card { border-top:1px solid var(--border); padding-top:1.5rem; margin-top:1.5rem; }
+  .q-card h2 { overflow-wrap:anywhere; }
   .q-card:first-child { border-top:0; margin-top:0; padding-top:0; }
   .registrada { background:#E7F2F1; border:1px solid var(--teal); color:var(--teal-dark);
                 border-radius:.5rem; padding:.6rem .9rem; }

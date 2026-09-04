@@ -32,43 +32,88 @@
 
   {% if saved %}<div class="alert alert-success py-2">Guardado.</div>{% endif %}
 
-  {% for q in questions %}
-  <form method="post" class="card-box d-grid gap-3 mb-3">
-    <input type="hidden" name="action" value="save">
-    <input type="hidden" name="qid" value="{{ q.id }}">
+  <form method="post" id="form-preguntas">
+    <input type="hidden" name="action" value="save_all">
 
-    <div>
-      <label class="form-label text-muted-brand">Pregunta {{ forloop.counter }}</label>
-      <textarea name="text" rows="2" class="form-control">{{ q.text }}</textarea>
-    </div>
+    <div id="lista">
+      {% for q in questions %}
+      <div class="card-box qblock mb-3" data-respuestas="{{ q.n_responses }}">
+        <input type="hidden" name="qid" value="{{ q.id }}">
 
-    <div>
-      <label class="form-label text-muted-brand">Opciones — marca la correcta</label>
-      {% for value, letter, text in q.options %}
-      <div class="input-group mb-2">
-        <div class="input-group-text">
-          <input type="radio" name="correct_option" value="{{ value }}" class="form-check-input mt-0"
-                 {% if value == q.correct_option %}checked{% endif %}>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <label class="form-label text-muted-brand mb-0">Pregunta <span class="num"></span></label>
+          <button type="button" class="btn btn-sm btn-outline-danger btn-quitar">Quitar</button>
         </div>
-        <span class="input-group-text">{{ letter }}</span>
-        <input type="text" name="option_{{ value }}" value="{{ text }}" class="form-control">
+
+        <textarea name="text_{{ q.id }}" rows="3" class="form-control mb-3"
+                  placeholder="Escribe la pregunta">{{ q.text }}</textarea>
+
+        <label class="form-label text-muted-brand">Opciones — marca la correcta</label>
+        {% for value, letter, text in q.options %}
+        <div class="input-group mb-2">
+          <div class="input-group-text">
+            <input type="radio" name="correct_{{ q.id }}" value="{{ value }}" class="form-check-input mt-0"
+                   {% if value == q.correct_option %}checked{% endif %}>
+          </div>
+          <span class="input-group-text">{{ letter }}</span>
+          <textarea name="option_{{ q.id }}_{{ value }}" rows="1" class="form-control">{{ text }}</textarea>
+        </div>
+        {% endfor %}
       </div>
       {% endfor %}
     </div>
 
-    <div class="d-flex gap-2">
-      <button class="btn btn-brand">Guardar</button>
-      <button class="btn btn-outline-danger" name="action" value="delete"
-              formnovalidate
-              onclick="return confirm('¿Borrar esta pregunta y sus respuestas?');">Borrar</button>
+    <div class="d-flex flex-wrap gap-2 mb-2">
+      <button type="button" id="btn-agregar" class="btn btn-outline-secondary">+ Agregar pregunta</button>
+      <button class="btn btn-brand btn-lg ms-auto px-4">Guardar todo</button>
     </div>
+    <p class="small text-muted-brand">
+      Un solo botón guarda todo: los cambios, las preguntas nuevas y las que
+      quitaste. Si dejas el texto de una pregunta vacío, se elimina.
+    </p>
   </form>
-  {% endfor %}
 
-  <form method="post" class="mb-4">
-    <input type="hidden" name="action" value="add">
-    <button class="btn btn-brand">+ Agregar pregunta</button>
-  </form>
+  <!-- Plantilla para preguntas nuevas: __KEY__ se reemplaza al agregar -->
+  <template id="tpl-pregunta">
+    <div class="card-box qblock mb-3" data-respuestas="0">
+      <input type="hidden" name="qid" value="__KEY__">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="form-label text-muted-brand mb-0">Pregunta <span class="num"></span></label>
+        <button type="button" class="btn btn-sm btn-outline-danger btn-quitar">Quitar</button>
+      </div>
+      <textarea name="text___KEY__" rows="3" class="form-control mb-3"
+                placeholder="Escribe la pregunta"></textarea>
+      <label class="form-label text-muted-brand">Opciones — marca la correcta</label>
+      <div class="input-group mb-2">
+        <div class="input-group-text">
+          <input type="radio" name="correct___KEY__" value="0" class="form-check-input mt-0" checked>
+        </div>
+        <span class="input-group-text">A</span>
+        <textarea name="option___KEY___0" rows="1" class="form-control"></textarea>
+      </div>
+      <div class="input-group mb-2">
+        <div class="input-group-text">
+          <input type="radio" name="correct___KEY__" value="1" class="form-check-input mt-0">
+        </div>
+        <span class="input-group-text">B</span>
+        <textarea name="option___KEY___1" rows="1" class="form-control"></textarea>
+      </div>
+      <div class="input-group mb-2">
+        <div class="input-group-text">
+          <input type="radio" name="correct___KEY__" value="2" class="form-check-input mt-0">
+        </div>
+        <span class="input-group-text">C</span>
+        <textarea name="option___KEY___2" rows="1" class="form-control"></textarea>
+      </div>
+      <div class="input-group mb-2">
+        <div class="input-group-text">
+          <input type="radio" name="correct___KEY__" value="3" class="form-check-input mt-0">
+        </div>
+        <span class="input-group-text">D</span>
+        <textarea name="option___KEY___3" rows="1" class="form-control"></textarea>
+      </div>
+    </div>
+  </template>
 
   <div class="card-box">
     <p class="mb-3">
@@ -87,6 +132,53 @@
   </div>
 
   <div class="mt-4"><a href="/" style="color:var(--teal-dark)">← Ver dashboard</a></div>
+
+<script>
+const lista = document.getElementById('lista');
+let nuevas = 0;
+
+function renumerar() {
+  lista.querySelectorAll('.qblock').forEach((b, i) => {
+    b.querySelector('.num').textContent = i + 1;
+  });
+}
+
+function autoAlto(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = (ta.scrollHeight + 2) + 'px';
+}
+
+function conectar(bloque) {
+  bloque.querySelector('.btn-quitar').addEventListener('click', () => {
+    const n = Number(bloque.dataset.respuestas || 0);
+    const aviso = n
+      ? '¿Quitar esta pregunta? Tiene ' + n + ' respuesta(s) que se borrarán al guardar.'
+      : '¿Quitar esta pregunta?';
+    if (!confirm(aviso)) return;
+    bloque.remove();
+    renumerar();
+  });
+  bloque.querySelectorAll('textarea').forEach(ta => {
+    autoAlto(ta);
+    ta.addEventListener('input', () => autoAlto(ta));
+  });
+}
+
+lista.querySelectorAll('.qblock').forEach(conectar);
+renumerar();
+
+document.getElementById('btn-agregar').addEventListener('click', () => {
+  const key = 'new' + (++nuevas);
+  const html = document.getElementById('tpl-pregunta').innerHTML.replaceAll('__KEY__', key);
+  const temp = document.createElement('div');
+  temp.innerHTML = html.trim();
+  const bloque = temp.firstElementChild;
+  lista.appendChild(bloque);
+  conectar(bloque);
+  renumerar();
+  bloque.querySelector('textarea').focus();
+});
+</script>
 {% endif %}
 
 </div>

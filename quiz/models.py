@@ -3,7 +3,7 @@ from django.db import models
 
 
 class Question(models.Model):
-    text = models.CharField(max_length=300)
+    text = models.TextField()  # sin limite: preguntas largas
     options = models.JSONField(default=list)  # 4 strings
     correct_option = models.IntegerField(default=0)  # 0=A 1=B 2=C 3=D
 
@@ -23,6 +23,7 @@ class State(models.Model):
 
     started = models.BooleanField(default=False)
     finished = models.BooleanField(default=False)
+    seeded = models.BooleanField(default=False)
 
 
 class Response(models.Model):
@@ -50,10 +51,17 @@ def get_state():
 
 
 def ensure_seed():
-    """Primera corrida: crea la pregunta de config/settings.py."""
+    """Solo la primera corrida: crea la pregunta de config/settings.py.
+
+    Se marca en State para no resucitarla si luego las borras todas.
+    """
+    state = get_state()
+    if state.seeded:
+        return
     if not Question.objects.exists():
         Question.objects.create(
             text=settings.QUESTION,
             options=settings.OPTIONS,
             correct_option=settings.CORRECT_OPTION,
         )
+    State.objects.filter(pk=state.pk).update(seeded=True)

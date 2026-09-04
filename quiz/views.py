@@ -208,28 +208,47 @@ def admin(request):
     ensure_seed()
     action = request.POST.get("action")
 
-    if action == "add":
-        Question.objects.create(text="Nueva pregunta", options=["", "", "", ""])
-    elif action == "delete":
-        Question.objects.filter(pk=request.POST.get("qid")).delete()
-    elif action == "reset":
+    if action == "reset":
         Response.objects.all().delete()
         Participant.objects.all().delete()
         State.objects.filter(pk=get_state().pk).update(started=False, finished=False)
-    elif action == "save":
-        question = Question.objects.filter(pk=request.POST.get("qid")).first()
-        if question:
-            question.text = request.POST.get("text", "").strip()
-            question.options = [
-                request.POST.get(f"option_{i}", "").strip() for i in range(4)
-            ]
-            question.correct_option = int(request.POST.get("correct_option", 0))
-            question.save()
+
+    elif action == "save_all":
+        # Un solo submit trae TODAS las preguntas: las existentes se
+        # actualizan, las nuevas (key "newN") se crean y las que no vinieron
+        # en el formulario se borran.
+        keep = []
+        for key in request.POST.getlist("qid"):
+            text = request.POST.get(f"text_{key}", "").strip()
+            options = [request.POST.get(f"option_{key}_{i}", "").strip() for i in range(4)]
+            try:
+                correct = int(request.POST.get(f"correct_{key}", 0))
+            except (TypeError, ValueError):
+                correct = 0
+            if correct not in (0, 1, 2, 3):
+                correct = 0
+            if not text:
+                continue  # bloque vacio: se descarta
+
+            if key.startswith("new"):
+                keep.append(
+                    Question.objects.create(
+                        text=text, options=options, correct_option=correct
+                    ).id
+                )
+            elif key.isdigit():
+                Question.objects.filter(pk=key).update(
+                    text=text, options=options, correct_option=correct
+                )
+                keep.append(int(key))
+
+        Question.objects.exclude(id__in=keep).delete()
 
     if action:
         return HttpResponseRedirect("/admin/?ok=1")
 
     stats = _stats()
+    counts = {q["id"]: q["total"] for q in stats["questions"]}
     return render(
         request,
         "admin.html",
@@ -240,6 +259,7 @@ def admin(request):
                     "text": question.text,
                     "correct_option": question.correct_option,
                     "options": list(zip(range(4), LETTERS, question.options)),
+                    "n_responses": counts.get(question.id, 0),
                 }
                 for question in Question.objects.all()
             ],
