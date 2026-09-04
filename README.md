@@ -129,6 +129,17 @@ participant_uuid)` en SQLite).
 está logueado). Si alguien conoce la URL puede dispararlos; para el evento no
 compartas la URL raíz, solo el QR de `/answer/`.
 
+### Caché de los teléfonos
+
+Las páginas van con `no-store` (`@never_cache`), así que un teléfono nunca
+muestra una versión vieja tras un deploy. Solo `/logo.jpg` se cachea (24 h).
+
+En `localStorage` el teléfono guarda **únicamente su UUID**. Qué preguntas ya
+respondió lo dice el servidor en la respuesta de `/api/join/`, así que después
+de **Reiniciar evento** todos los móviles se desbloquean solos: no hay que
+pedirle a nadie que borre datos del navegador. Por si acaso, `/answer/` tiene
+abajo un enlace **Reiniciar este teléfono** que limpia el `localStorage`.
+
 El participante **no** ve si acertó: solo "respuesta registrada". Los aciertos
 se ven únicamente en el dashboard del proyector: marcador global grande arriba
 y, debajo, una barra pequeña por pregunta. Si agregas o borras preguntas en

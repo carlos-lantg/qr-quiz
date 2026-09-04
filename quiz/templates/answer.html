@@ -63,6 +63,10 @@
     <p class="text-muted-brand fs-5">Gracias por participar. Mira los resultados en pantalla.</p>
   </div>
 
+  <p class="text-center mt-4">
+    <a href="#" id="reiniciar" class="small text-muted-brand">Reiniciar este teléfono</a>
+  </p>
+
 </div>
 
 <script>
@@ -82,13 +86,20 @@ let dentro = false, celebrado = false;
 
 async function unirse() {
   const r = await fetch('/api/join/', {
-    method: 'POST',
+    method: 'POST', cache: 'no-store',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({uuid: uuid})
   });
   dentro = r.ok;
-  if (!dentro) mostrar('closed');
-  return dentro;
+  if (!dentro) { mostrar('closed'); return false; }
+  // El servidor dice que preguntas ya respondi: si el evento se reinicia,
+  // el telefono se desbloquea solo sin tener que borrar datos del navegador.
+  const data = await r.json();
+  (data.answered || []).forEach(qid => {
+    const card = document.querySelector('.q-card[data-q="' + qid + '"]');
+    if (card) markDone(card);
+  });
+  return true;
 }
 
 function markDone(card) {
@@ -98,7 +109,6 @@ function markDone(card) {
 
 document.querySelectorAll('.q-card').forEach(card => {
   const qid = card.dataset.q;
-  if (localStorage.getItem('answered_' + qid)) markDone(card);
 
   card.querySelectorAll('.opt').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -112,7 +122,6 @@ document.querySelectorAll('.q-card').forEach(card => {
           })
         });
         if (!r.ok && r.status !== 409) throw new Error();
-        localStorage.setItem('answered_' + qid, '1');
         markDone(card);
       } catch (e) {
         card.querySelectorAll('.opt').forEach(b => b.disabled = false);
@@ -134,6 +143,18 @@ async function tick() {
     mostrar(s.started ? 'quiz' : 'waiting');
   } catch (e) {}
 }
+
+document.getElementById('reiniciar').addEventListener('click', e => {
+  e.preventDefault();
+  if (!confirm('¿Borrar los datos de este teléfono y empezar de nuevo?')) return;
+  localStorage.clear();
+  location.reload();
+});
+
+// Safari restaura la pagina desde bfcache al volver atras: refrescar al mostrar.
+window.addEventListener('pageshow', e => {
+  if (e.persisted) unirse().catch(() => {}).then(tick);
+});
 
 unirse().catch(() => {}).then(tick);
 setInterval(tick, 2000);

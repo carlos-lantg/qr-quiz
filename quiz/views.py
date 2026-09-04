@@ -9,6 +9,7 @@ from django.db import IntegrityError
 from django.db.models import Count, Q
 from django.http import FileResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
+from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import Participant, Question, Response, State, ensure_seed, get_state
@@ -76,6 +77,7 @@ def _stats():
     }
 
 
+@never_cache
 def dashboard(request):
     ensure_seed()
     answer_url = (settings.BASE_URL or f"{request.scheme}://{request.get_host()}") + "/answer/"
@@ -92,11 +94,14 @@ def dashboard(request):
 
 
 def logo(request):
-    return FileResponse(
+    response = FileResponse(
         open(settings.BASE_DIR / "logo.jpg", "rb"), content_type="image/jpeg"
     )
+    response["Cache-Control"] = "public, max-age=86400"
+    return response
 
 
+@never_cache
 def answer(request):
     ensure_seed()
     questions = [
@@ -145,10 +150,12 @@ def api_answer(request):
     return JsonResponse({"ok": True})
 
 
+@never_cache
 def api_stats(request):
     return JsonResponse(_stats())
 
 
+@never_cache
 @csrf_exempt
 def api_join(request):
     """El movil se registra al abrir /answer/. Cierra al dar Comenzar."""
@@ -160,14 +167,23 @@ def api_join(request):
     if not uuid:
         return JsonResponse({"error": "datos invalidos"}, status=400)
 
-    if Participant.objects.filter(uuid=uuid).exists():
-        return JsonResponse({"ok": True})
+    if not Participant.objects.filter(uuid=uuid).exists():
+        if get_state().started:
+            return JsonResponse({"error": "cerrado"}, status=403)
+        Participant.objects.get_or_create(uuid=uuid)
 
-    if get_state().started:
-        return JsonResponse({"error": "cerrado"}, status=403)
-
-    Participant.objects.get_or_create(uuid=uuid)
-    return JsonResponse({"ok": True})
+    # La verdad de "ya respondi" vive en el servidor, no en el telefono: asi un
+    # "Reiniciar evento" desbloquea todos los moviles sin borrarles el cache.
+    return JsonResponse(
+        {
+            "ok": True,
+            "answered": list(
+                Response.objects.filter(participant_uuid=uuid).values_list(
+                    "question_id", flat=True
+                )
+            ),
+        }
+    )
 
 
 @csrf_exempt
@@ -194,6 +210,7 @@ def _is_admin(request):
         return False
 
 
+@never_cache
 @csrf_exempt
 def admin(request):
     if not _is_admin(request):
