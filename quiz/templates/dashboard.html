@@ -153,18 +153,27 @@ async function tick() {
 
     if (s.done && !celebrado) { celebrado = true; lanzarConfeti(4000); }
 
-    const rows = document.querySelectorAll('.q-row');
     // Si agregaron o borraron preguntas en /admin/, recargar para redibujar.
-    if (rows.length !== s.questions.length) { location.reload(); return; }
+    // Una sola vez por juego de preguntas: evita un bucle de recargas en el
+    // proyector si la pagina siguiera llegando desactualizada.
+    const ids = s.questions.map(q => String(q.id)).join(',');
+    function recargarUnaVez() {
+      if (sessionStorage.getItem('recarga_preguntas') === ids) return;
+      sessionStorage.setItem('recarga_preguntas', ids);
+      location.reload();
+    }
 
-    s.questions.forEach(q => {
+    const rows = document.querySelectorAll('.q-row');
+    if (rows.length !== s.questions.length) { recargarUnaVez(); return; }
+
+    for (const q of s.questions) {
       const row = document.querySelector('.q-row[data-q="' + q.id + '"]');
-      if (!row) { location.reload(); return; }
+      if (!row) { recargarUnaVez(); return; }
       row.querySelector('.j-correct').textContent = q.correct;
       row.querySelector('.j-total').textContent = q.total;
       row.querySelector('.j-pct').textContent = q.percentage;
       row.querySelector('.j-bar').style.width = q.percentage + '%';
-    });
+    }
   } catch (e) {}
 }
 setInterval(tick, 2000);

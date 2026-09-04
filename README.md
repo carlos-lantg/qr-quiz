@@ -144,7 +144,13 @@ En `localStorage` el teléfono guarda **únicamente su UUID**. Qué preguntas ya
 respondió lo dice el servidor en la respuesta de `/api/join/`, así que después
 de **Reiniciar evento** todos los móviles se desbloquean solos: no hay que
 pedirle a nadie que borre datos del navegador. Por si acaso, `/answer/` tiene
-abajo un enlace **Reiniciar este teléfono** que limpia el `localStorage`.
+abajo un enlace **Reiniciar preguntas para otra ronda** que limpia el
+`localStorage` y recarga.
+
+Si cambias las preguntas para una ronda nueva, los teléfonos que quedaron con
+la página abierta se recargan solos para traerlas (una sola vez por juego de
+preguntas, con marca en `sessionStorage`, para no caer en un bucle de
+recargas). El dashboard tiene el mismo blindaje.
 
 Al terminar el quiz, cada teléfono borra su `localStorage` solo, así queda
 limpio para la próxima vez.

@@ -76,7 +76,7 @@
   </div>
 
   <p class="text-center mt-4">
-    <a href="#" id="reiniciar" class="small text-muted-brand">Reiniciar este teléfono</a>
+    <a href="#" id="reiniciar" class="small text-muted-brand">Reiniciar preguntas para otra ronda</a>
   </p>
 
 </div>
@@ -97,6 +97,7 @@ function mostrar(id) {
 }
 
 const tarjetas = Array.from(document.querySelectorAll('.q-card'));
+const idsLocales = tarjetas.map(c => c.dataset.q).join(',');
 const respondidas = new Set();
 let dentro = false, celebrado = false, actual = -1;
 
@@ -166,7 +167,7 @@ tarjetas.forEach(card => {
 
 document.getElementById('reiniciar').addEventListener('click', e => {
   e.preventDefault();
-  if (!confirm('¿Borrar los datos de este teléfono y empezar de nuevo?')) return;
+  if (!confirm('¿Reiniciar las preguntas para otra ronda?')) return;
   localStorage.clear();
   location.reload();
 });
@@ -184,6 +185,18 @@ async function tick() {
         lanzarConfeti(4000);
       }
       return;
+    }
+
+    // Otra ronda con preguntas distintas: recargar para traerlas. La marca va
+    // en sessionStorage (sobrevive al reload) para no caer en un bucle si por
+    // lo que sea la pagina sigue llegando vieja.
+    const idsServidor = (s.questions || []).map(q => String(q.id)).join(',');
+    if (idsServidor !== idsLocales) {
+      if (sessionStorage.getItem('recarga_ronda') !== idsServidor) {
+        sessionStorage.setItem('recarga_ronda', idsServidor);
+        location.reload();
+        return;
+      }
     }
 
     if (!dentro) return;              // llego tarde: se queda en "closed"
