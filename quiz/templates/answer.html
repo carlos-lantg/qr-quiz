@@ -187,6 +187,11 @@ async function tick() {
       return;
     }
 
+    // Vimos el final y ahora el evento esta vivo otra vez: es una ronda nueva.
+    // Al terminar borramos el localStorage, asi que este uuid ya no esta
+    // inscrito; hay que recargar para generar uno nuevo y volver a entrar.
+    if (celebrado) { location.reload(); return; }
+
     // Otra ronda con preguntas distintas: recargar para traerlas. La marca va
     // en sessionStorage (sobrevive al reload) para no caer en un bucle si por
     // lo que sea la pagina sigue llegando vieja.

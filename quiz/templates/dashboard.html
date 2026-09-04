@@ -152,6 +152,7 @@ async function tick() {
     document.getElementById('b-incorrect').textContent = s.incorrect;
 
     if (s.done && !celebrado) { celebrado = true; lanzarConfeti(4000); }
+    if (!s.done) celebrado = false;   // otra ronda: el confeti puede repetirse
 
     // Si agregaron o borraron preguntas en /admin/, recargar para redibujar.
     // Una sola vez por juego de preguntas: evita un bucle de recargas en el
