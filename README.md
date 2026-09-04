@@ -66,6 +66,9 @@ La paleta sale del logo y está en `quiz/templates/_theme.html`
    teléfono.
 5. Si alguien se conectó y se fue, el quiz nunca llega al 100%: usa el botón
    **Terminar ahora** del dashboard para forzar el final y el confeti.
+6. Para otra ronda: el botón **Reiniciar evento** aparece en el dashboard junto
+   a "¡COMPLETADO!" (solo cuando termina). Borra respuestas y participantes,
+   deja las preguntas y vuelve a mostrar el QR — sin entrar a `/admin/`.
 
 Para volver a empezar: **Reiniciar evento** en `/admin/` (borra respuestas y
 participantes, y reabre el QR).
@@ -116,6 +119,7 @@ Probado con 40 respuestas simultáneas (0.13 s, sin locks) y 60 pollings a la ve
 | `POST /api/join/` | `{"uuid": "..."}` → registra al participante; 403 si ya comenzó |
 | `POST /api/start/` | Botón Comenzar: cierra el QR y abre las preguntas |
 | `POST /api/finish/` | Botón Terminar ahora: fuerza el final |
+| `POST /api/reset/` | Botón Reiniciar evento: borra respuestas y participantes |
 | `GET/POST /admin/` | Alta/edición/baja de todas las preguntas en un submit + reiniciar evento (`123456`) |
 
 En el proyector cada pregunta se recorta a 2 líneas (el texto completo está en
@@ -131,7 +135,7 @@ Cada pregunta se responde cada una se responde
 una sola vez por navegador (UUID en `localStorage` + `UNIQUE (question,
 participant_uuid)` en SQLite).
 
-`/api/start/` y `/api/finish/` no piden clave (el dashboard del proyector no
+`/api/start/`, `/api/finish/` y `/api/reset/` no piden clave (el dashboard del proyector no
 está logueado). Si alguien conoce la URL puede dispararlos; para el evento no
 compartas la URL raíz, solo el QR de `/answer/`.
 

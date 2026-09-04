@@ -23,6 +23,13 @@ def _pct(correct, total):
     return round(correct * 100 / total) if total else 0
 
 
+def _reiniciar_evento():
+    """Deja el evento como recien montado: sin respuestas ni participantes."""
+    Response.objects.all().delete()
+    Participant.objects.all().delete()
+    State.objects.filter(pk=get_state().pk).update(started=False, finished=False)
+
+
 def _stats():
     """Totales globales + una fila por pregunta, en una sola consulta."""
     questions = []
@@ -193,6 +200,13 @@ def api_start(request):
 
 
 @csrf_exempt
+def api_reset(request):
+    """Boton "Reiniciar evento" del dashboard, para no entrar a /admin/."""
+    _reiniciar_evento()
+    return JsonResponse(_stats())
+
+
+@csrf_exempt
 def api_finish(request):
     State.objects.filter(pk=get_state().pk).update(finished=True)
     return JsonResponse(_stats())
@@ -226,9 +240,7 @@ def admin(request):
     action = request.POST.get("action")
 
     if action == "reset":
-        Response.objects.all().delete()
-        Participant.objects.all().delete()
-        State.objects.filter(pk=get_state().pk).update(started=False, finished=False)
+        _reiniciar_evento()
 
     elif action == "save_all":
         # Un solo submit trae TODAS las preguntas: las existentes se

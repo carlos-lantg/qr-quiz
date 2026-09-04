@@ -10,6 +10,7 @@ urlpatterns = [
     path("api/join/", views.api_join),
     path("api/start/", views.api_start),
     path("api/finish/", views.api_finish),
+    path("api/reset/", views.api_reset),
     path("logo.jpg", views.logo),
     path("admin/", views.admin),
     path("admin/logout/", views.admin_logout),

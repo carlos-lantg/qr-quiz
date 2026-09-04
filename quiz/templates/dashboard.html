@@ -107,6 +107,7 @@
         <div class="display-1 mb-2">🎉</div>
         <div class="fs-1 fw-bold" style="color:var(--teal-dark)">¡COMPLETADO!</div>
         <div class="fs-4 mt-2"><span id="done-participants">{{ stats.participants }}</span> participantes</div>
+        <button id="btn-reset" class="btn btn-outline-secondary mt-4">Reiniciar evento</button>
       </div>
     </div>
 
@@ -120,6 +121,12 @@ let celebrado = {% if stats.done %}true{% else %}false{% endif %};
 
 document.getElementById('btn-start').addEventListener('click', async () => {
   await fetch('/api/start/', {method: 'POST'});
+  tick();
+});
+
+document.getElementById('btn-reset').addEventListener('click', async () => {
+  if (!confirm('¿Reiniciar el evento?\n\nSe borran las respuestas y los participantes, y vuelve a mostrarse el QR.')) return;
+  await fetch('/api/reset/', {method: 'POST'});
   tick();
 });
 
