@@ -63,30 +63,38 @@ participantes, y reabre el QR).
 
 ## Deploy en Render.com
 
-El repo trae `render.yaml`, así que en Render: **New → Blueprint** → elige este
-repo → Apply. O manualmente, **New → Web Service** con:
+El repo trae `render.yaml` con el plan **Starter ($7/mes) y un disco
+persistente**. En Render: **New → Blueprint** → elige este repo → Apply. Eso
+crea el servicio, genera el `SECRET_KEY` y monta el disco.
 
-- Build command: `pip install -r requirements.txt`
-- Start command: `python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`
-- Variables: `DEBUG=0`, `SECRET_KEY` (genera una), `ADMIN_PASSWORD` (la clave de
-  `/admin/`, por defecto `123456`)
+Lo que define el blueprint:
 
-El QR se arma solo con el dominio de Render (`https://…onrender.com/answer/`),
+| | |
+|---|---|
+| Plan | `starter` (el disco requiere plan de pago) |
+| Disco | `data`, 1 GB, montado en `/var/data` |
+| Base de datos | `DB_PATH=/var/data/db.sqlite3` → **vive en el disco, no se borra** |
+| Build | `pip install -r requirements.txt` |
+| Start | `migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --threads 8` |
+| Variables | `DEBUG=0`, `SECRET_KEY` (autogenerado), `ADMIN_PASSWORD` |
+
+El QR se arma solo con el dominio de Render (`https://…onrender.com/answer/`);
 no hay que configurar `BASE_URL`.
 
-### Aviso importante: SQLite en el plan free se borra
+**El disco persiste entre deploys y reinicios**: las preguntas que cargues en
+`/admin/` y las respuestas siguen ahí después de un redeploy. El plan Starter
+tampoco se suspende por inactividad. Para empezar de cero usa **Reiniciar
+evento** en `/admin/`.
 
-El disco de Render es efímero. Cada deploy o reinicio deja la base en blanco, y
-el plan free **suspende el servicio tras 15 minutos sin tráfico**: al despertar,
-las preguntas que hayas cargado en `/admin/` y las respuestas ya no están.
+Dos detalles del arranque, a propósito:
 
-Para la conferencia:
+- **1 worker**: SQLite no se comparte bien entre procesos. Los hilos (`--threads 8`)
+  absorben el pico de cuando todos responden a la vez.
+- `OPTIONS: {"timeout": 20}` en la base: si dos escrituras coinciden, la segunda
+  espera el lock en vez de fallar.
 
-- Carga las preguntas en `/admin/` **poco antes** de empezar, no el día anterior.
-- Ten el dashboard abierto: hace polling cada 2s y eso mantiene el servicio
-  despierto durante todo el evento.
-- Si quieres que sobreviva a reinicios: instancia de pago + **Disk** montado en
-  `/var/data` y la variable `DB_PATH=/var/data/db.sqlite3`.
+Probado con 40 respuestas simultáneas (0.13 s, sin locks) y 60 pollings a la vez
+(todos 200).
 
 ## Endpoints
 

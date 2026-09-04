@@ -53,6 +53,8 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": os.environ.get("DB_PATH") or BASE_DIR / "db.sqlite3",
+        # Cuando todos responden a la vez, esperar el lock en vez de fallar.
+        "OPTIONS": {"timeout": 20},
     }
 }
 

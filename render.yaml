@@ -2,10 +2,18 @@ services:
   - type: web
     name: qr-quiz
     runtime: python
-    plan: free
+    plan: starter                     # $7/mes: requerido para tener disco
     buildCommand: pip install -r requirements.txt
-    startCommand: python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+    # 1 worker (SQLite no comparte bien entre procesos) + hilos para el pico
+    # de respuestas simultaneas.
+    startCommand: python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --threads 8
+    disk:
+      name: data
+      mountPath: /var/data            # el disco persiste entre deploys
+      sizeGB: 1
     envVars:
+      - key: DB_PATH
+        value: /var/data/db.sqlite3   # la base vive en el disco, no en el contenedor
       - key: PYTHON_VERSION
         value: "3.12.7"
       - key: DEBUG
